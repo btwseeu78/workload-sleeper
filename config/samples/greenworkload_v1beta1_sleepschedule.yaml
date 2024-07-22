@@ -1,0 +1,9 @@
+apiVersion: greenworkload.platform.io/v1beta1
+kind: SleepSchedule
+metadata:
+  labels:
+    app.kubernetes.io/name: workload-sleeper
+    app.kubernetes.io/managed-by: kustomize
+  name: sleepschedule-sample
+spec:
+  # TODO(user): Add fields here
