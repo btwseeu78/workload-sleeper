@@ -18,22 +18,23 @@ package controller
 
 import (
 	"context"
-
+	greenworkloadv1beta1 "github.com/btwseeu78/workload-sleeper/api/v1beta1"
+	"github.com/go-logr/logr"
+	"k8s.io/apimachinery/pkg/api/errors"
 	"k8s.io/apimachinery/pkg/runtime"
 	ctrl "sigs.k8s.io/controller-runtime"
 	"sigs.k8s.io/controller-runtime/pkg/client"
-	"sigs.k8s.io/controller-runtime/pkg/log"
 )
 
 // WorkloadScalerReconciler reconciles a WorkloadScaler object
 type WorkloadScalerReconciler struct {
 	client.Client
 	Scheme *runtime.Scheme
+	Log    logr.Logger
 }
 
-//+kubebuilder:rbac:groups=greenworkload.platform.io,resources=workloadscalers,verbs=get;list;watch;create;update;patch;delete
-//+kubebuilder:rbac:groups=greenworkload.platform.io,resources=workloadscalers/status,verbs=get;update;patch
-//+kubebuilder:rbac:groups=greenworkload.platform.io,resources=workloadscalers/finalizers,verbs=update
+//+kubebuilder:rbac:groups=greenworkload.platform.io,resources=sleepschedules,verbs=get;list;watch
+//+kubebuilder:rbac:groups=greenworkload.platform.io,resources=sleepschedules/status,verbs=get
 
 // Reconcile is part of the main kubernetes reconciliation loop which aims to
 // move the current state of the cluster closer to the desired state.
@@ -45,9 +46,20 @@ type WorkloadScalerReconciler struct {
 // For more details, check Reconcile and its Result here:
 // - https://pkg.go.dev/sigs.k8s.io/controller-runtime@v0.17.2/pkg/reconcile
 func (r *WorkloadScalerReconciler) Reconcile(ctx context.Context, req ctrl.Request) (ctrl.Result, error) {
-	_ = log.FromContext(ctx)
+	log := r.Log.WithValues("workloadscaler", req.NamespacedName)
 
-	// TODO(user): your logic here
+	// get the sleepschedule status
+	sleepSchedule := &greenworkloadv1beta1.SleepSchedule{}
+	err := r.Get(ctx, req.NamespacedName, sleepSchedule)
+	if err != nil {
+		if errors.IsNotFound(err) {
+			log.Info("WorkloadScaler resource not found. Ignoring sleep.")
+			return ctrl.Result{}, nil
+		}
+		log.Error(err, "unable to fetch sleep schedule resource")
+		return ctrl.Result{}, err
+	}
+	log.Info("Reconciling sleep schedule resource", "Namespace", req.Namespace, "Name", req.Name)
 
 	return ctrl.Result{}, nil
 }
@@ -55,7 +67,6 @@ func (r *WorkloadScalerReconciler) Reconcile(ctx context.Context, req ctrl.Reque
 // SetupWithManager sets up the controller with the Manager.
 func (r *WorkloadScalerReconciler) SetupWithManager(mgr ctrl.Manager) error {
 	return ctrl.NewControllerManagedBy(mgr).
-		// Uncomment the following line adding a pointer to an instance of the controlled resource as an argument
-		// For().
+		For(&greenworkloadv1beta1.SleepSchedule{}).
 		Complete(r)
 }

@@ -135,6 +135,11 @@ func (r *SleepScheduleReconciler) Reconcile(ctx context.Context, req ctrl.Reques
 	}
 	formattedCurrDateTime = formattedCurrDateTime.In(loc)
 
+	if !sleepSchedule.Spec.Schedule.PauseScheduled {
+		log.Info("Paused Current Automation")
+		return ctrl.Result{}, nil
+	}
+
 	if sleepSchedule.Status.CurrStatus == greenworkloadv1beta1.SleepStatusAbandon {
 		log.Info("Curr Status is Abandoned", "Curr Status", sleepSchedule.Status.CurrStatus)
 		return ctrl.Result{}, nil
