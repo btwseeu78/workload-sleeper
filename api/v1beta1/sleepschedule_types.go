@@ -23,13 +23,22 @@ import (
 // EDIT THIS FILE!  THIS IS SCAFFOLDING FOR YOU TO OWN!
 // NOTE: json tags are required.  Any new fields you add must have json tags for the fields to be serialized.
 
+type SleepStatus string
+
+const (
+	SleepStatusPending SleepStatus = "Pending"
+	SleepStatusPaused  SleepStatus = "Paused"
+	SleepStatusResumed SleepStatus = "Resumed"
+	SleepStatusAbandon SleepStatus = "Abandoned"
+)
+
 // SleepScheduleSpec defines the desired state of SleepSchedule
 type SleepScheduleSpec struct {
 	// INSERT ADDITIONAL SPEC FIELDS - desired state of cluster
 	// Important: Run "make" to regenerate code after modifying this file
 	// +kubebuilder:validation:Optional
-	Schedule          *scheduleInfo         `json:"schedule"`
-	Target            targetInfo            `json:"target"`
+	Schedule *scheduleInfo `json:"schedule"`
+	//Target            targetInfo            `json:"target"`
 	NamespaceSelector *metav1.LabelSelector `json:"namespaceSelector,omitempty"`
 }
 
@@ -37,14 +46,18 @@ type SleepScheduleSpec struct {
 type SleepScheduleStatus struct {
 	// INSERT ADDITIONAL STATUS FIELD - define observed state of cluster
 	// Important: Run "make" to regenerate code after modifying this file
-	LastTriggered  metav1.Time `json:"lastTriggered"`
-	NextPauseTime  metav1.Time `json:"nextPauseTime"`
-	NextResumeTime metav1.Time `json:"nextResumeTime"`
+	// Last triggered name
+	LastTriggered string `json:"lastTriggered"`
+	//// Triggered bool
+	// +kubebuilder:validation:Optional
+	// +kubebuilder:default="Pending"
+	CurrStatus SleepStatus `json:"currStatus,omitempty"`
 }
 
-//+kubebuilder:object:root=true
-//+kubebuilder:subresource:status
-
+// +kubebuilder:object:root=true
+// +kubebuilder:subresource:status
+// +kubebuilder:printcolumn:name="CurrStatus",type="string",JSONPath=".status.currStatus"
+// +kubebuilder:printcolumn:name="LastTriggered",type="string",JSONPath=".status.lastTriggered"
 // SleepSchedule is the Schema for the sleepschedules API
 type SleepSchedule struct {
 	metav1.TypeMeta   `json:",inline"`
@@ -65,10 +78,10 @@ type SleepScheduleList struct {
 }
 
 type scheduleInfo struct {
-	// Default TimeZone in which start date and end date would be defined defaults to UTC.
+
 	// +kubebuilder:default="UTC"
 	// +kubebuilder:validation:Optional
-	TimeZone string `json:"type"`
+	TimeZone string `json:"timeZone,omitempty"`
 	// Used to give Pause In Case of Custom Needs. Once This NeedTo Unset Manually
 	// +kubebuilder:validation:Optional
 	PauseScheduled bool `json:"pauseScheduled,omitempty"`
@@ -84,12 +97,6 @@ type scheduleInfo struct {
 	// End Time or Resume time
 	// +kubebuilder:validation:Optional
 	SleepEndTime string `json:"sleepEndTime,omitempty"`
-}
-
-type targetInfo struct {
-	Name                 string `json:"name"`
-	metav1.LabelSelector `json:"selector,omitempty"`
-	metav1.TypeMeta      `json:",inline"`
 }
 
 func init() {

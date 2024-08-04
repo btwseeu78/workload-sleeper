@@ -125,8 +125,16 @@ func main() {
 	if err = (&controller.SleepScheduleReconciler{
 		Client: mgr.GetClient(),
 		Scheme: mgr.GetScheme(),
+		Log:    ctrl.Log.WithName("controllers").WithName("SleepSchedule"),
 	}).SetupWithManager(mgr); err != nil {
 		setupLog.Error(err, "unable to create controller", "controller", "SleepSchedule")
+		os.Exit(1)
+	}
+	if err = (&controller.WorkloadScalerReconciler{
+		Client: mgr.GetClient(),
+		Scheme: mgr.GetScheme(),
+	}).SetupWithManager(mgr); err != nil {
+		setupLog.Error(err, "unable to create controller", "controller", "WorkloadScaler")
 		os.Exit(1)
 	}
 	//+kubebuilder:scaffold:builder

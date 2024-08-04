@@ -6,4 +6,15 @@ metadata:
     app.kubernetes.io/managed-by: kustomize
   name: sleepschedule-sample
 spec:
-  # TODO(user): Add fields here
+  schedule:
+    pauseScheduled: false
+    sleepEndDate: "2024-08-04"
+    sleepStartDate: "2024-08-03"
+    sleepStartTime: "20:00"
+    sleepEndTime: "20:50"
+    timeZone: "UTC"
+
+
+
+
+
