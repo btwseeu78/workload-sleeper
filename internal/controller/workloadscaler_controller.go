@@ -20,10 +20,14 @@ import (
 	"context"
 	greenworkloadv1beta1 "github.com/btwseeu78/workload-sleeper/api/v1beta1"
 	"github.com/go-logr/logr"
+	v1 "k8s.io/api/apps/v1"
 	"k8s.io/apimachinery/pkg/api/errors"
+	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/runtime"
 	ctrl "sigs.k8s.io/controller-runtime"
 	"sigs.k8s.io/controller-runtime/pkg/client"
+	"sigs.k8s.io/controller-runtime/pkg/reconcile"
+	"strconv"
 )
 
 // WorkloadScalerReconciler reconciles a WorkloadScaler object
@@ -35,6 +39,8 @@ type WorkloadScalerReconciler struct {
 
 //+kubebuilder:rbac:groups=greenworkload.platform.io,resources=sleepschedules,verbs=get;list;watch
 //+kubebuilder:rbac:groups=greenworkload.platform.io,resources=sleepschedules/status,verbs=get
+//+kubebuilder:rbac:groups=apps,resources=deployments,verbs=get;list;watch;patch;update;
+//+kubebuilder:rbac:groups=apps,resources=deployments/scale,verbs=get;list;watch;patch;update;
 
 // Reconcile is part of the main kubernetes reconciliation loop which aims to
 // move the current state of the cluster closer to the desired state.
@@ -51,6 +57,7 @@ func (r *WorkloadScalerReconciler) Reconcile(ctx context.Context, req ctrl.Reque
 	// get the sleepschedule status
 	sleepSchedule := &greenworkloadv1beta1.SleepSchedule{}
 	err := r.Get(ctx, req.NamespacedName, sleepSchedule)
+
 	if err != nil {
 		if errors.IsNotFound(err) {
 			log.Info("WorkloadScaler resource not found. Ignoring sleep.")
@@ -61,6 +68,46 @@ func (r *WorkloadScalerReconciler) Reconcile(ctx context.Context, req ctrl.Reque
 	}
 	log.Info("Reconciling sleep schedule resource", "Namespace", req.Namespace, "Name", req.Name)
 
+	// The main Code Block
+	sleepCopy := sleepSchedule.DeepCopy()
+	currStatus := sleepCopy.Status.CurrStatus
+	if currStatus == greenworkloadv1beta1.SleepStatusPaused {
+		lstList := sleepCopy.Spec.NamespaceSelector
+
+		selector, err := metav1.LabelSelectorAsSelector(lstList)
+		if err != nil {
+			log.Error(err, "Failed to convert LabelSelector to Selector")
+			return reconcile.Result{}, err
+		}
+
+		lstOptions := client.ListOptions{
+			LabelSelector: selector,
+			Namespace:     req.Namespace,
+		}
+		deployList := &v1.DeploymentList{}
+		err = r.List(ctx, deployList, &lstOptions)
+		if err != nil {
+			log.Error(err, "Failed to list Deployments")
+			return reconcile.Result{}, err
+		}
+		for _, deploy := range deployList.Items {
+			log.Info("Deployment", "Namespace", deploy.Namespace, "Name", deploy.Name)
+
+			tempDeploy := deploy.DeepCopy()
+			var replicas int32 = 0
+			tempDeploy.Spec.Replicas = &replicas
+			tempDeploy.ObjectMeta.Labels["old-replica"] = strconv.Itoa(int(replicas))
+			err = r.Update(ctx, tempDeploy)
+			if err != nil {
+				log.Error(err, "Failed to update Deployment", "Namespace", tempDeploy.Namespace, "Name", tempDeploy.Name)
+				return reconcile.Result{}, err
+			}
+			return ctrl.Result{}, nil
+		}
+		return ctrl.Result{}, nil
+
+	}
+
 	return ctrl.Result{}, nil
 }
 
@@ -68,5 +115,6 @@ func (r *WorkloadScalerReconciler) Reconcile(ctx context.Context, req ctrl.Reque
 func (r *WorkloadScalerReconciler) SetupWithManager(mgr ctrl.Manager) error {
 	return ctrl.NewControllerManagedBy(mgr).
 		For(&greenworkloadv1beta1.SleepSchedule{}).
+		WithEventFilter(&StatusUpdatePredicate{}).
 		Complete(r)
 }

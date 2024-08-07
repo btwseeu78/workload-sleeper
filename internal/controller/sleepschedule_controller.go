@@ -135,7 +135,7 @@ func (r *SleepScheduleReconciler) Reconcile(ctx context.Context, req ctrl.Reques
 	}
 	formattedCurrDateTime = formattedCurrDateTime.In(loc)
 
-	if !sleepSchedule.Spec.Schedule.PauseScheduled {
+	if sleepSchedule.Spec.Schedule.PauseScheduled {
 		log.Info("Paused Current Automation")
 		return ctrl.Result{}, nil
 	}

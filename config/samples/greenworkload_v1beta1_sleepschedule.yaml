@@ -6,13 +6,17 @@ metadata:
     app.kubernetes.io/managed-by: kustomize
   name: sleepschedule-sample
 spec:
+  namespaceSelector:
+    matchLabels:
+      sleep: "yes"
   schedule:
     pauseScheduled: false
-    sleepEndDate: "2024-08-04"
-    sleepStartDate: "2024-08-03"
-    sleepStartTime: "20:00"
-    sleepEndTime: "20:50"
+    sleepEndDate: "2024-08-08"
+    sleepStartDate: "2024-08-08"
+    sleepStartTime: "01:00"
+    sleepEndTime: "02:45"
     timeZone: "UTC"
+
 
 
 
